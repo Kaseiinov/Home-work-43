@@ -21,10 +21,9 @@ public class Main {
     }
 
     private static void initRoutes(HttpServer server) {
-        server.createContext("/", Main::handleStaticFile);
-        server.createContext("/styles.css", Main::handleStaticFile);
-        server.createContext("/apps/", Main::handleRequestApps);
-        server.createContext("/apps/profile", Main::handleRequestProfile);
+        server.createContext("/index.html", Main::handleStaticFile);
+        server.createContext("/apps/", handler -> handleRequestApps(handler));
+        server.createContext("/apps/profile", handler -> handleRequestProfile(handler));
     }
 
 
@@ -86,34 +85,34 @@ public class Main {
         }
     }
 
-    private static void handleStaticFile(HttpExchange exchange) {
-        try {
-            URI uri = exchange.getRequestURI();
-            String path = uri.getPath();
+    private static void handleStaticFile(HttpExchange exchange) throws IOException {
+        String uriPath = exchange.getRequestURI().getPath(); // /index.html или /styles.css
+        File file = new File("public", uriPath); // ищем файл в папке public
 
-            File file = new File("public", path.substring(1));
-
-            if (!file.exists() || file.isDirectory()) {
-                String notFound = "404: файл не найден";
-                exchange.sendResponseHeaders(404, notFound.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(notFound.getBytes());
-                os.close();
-                return;
-            }
-
-            String mimeType = getMimeType(path);
-            exchange.getResponseHeaders().add("Content-Type", mimeType);
-
-            byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
-            exchange.sendResponseHeaders(200, fileBytes.length);
-            OutputStream os = exchange.getResponseBody();
-            os.write(fileBytes);
-            os.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (!file.exists()) {
+            String errorMsg = "404 Not Found: " + uriPath;
+            exchange.sendResponseHeaders(404, errorMsg.length());
+            exchange.getResponseBody().write(errorMsg.getBytes());
+            exchange.close();
+            return;
         }
+
+        // Определяем тип контента
+        String contentType = "text/plain";
+        if (uriPath.endsWith(".html")) {
+            contentType = "text/html; charset=utf-8";
+        } else if (uriPath.endsWith(".css")) {
+            contentType = "text/css; charset=utf-8";
+        }
+
+        byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
+
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(200, fileBytes.length); // точная длина
+        exchange.getResponseBody().write(fileBytes);
+        exchange.close();
     }
+
 
 
     private static String getMimeType(String path) {
