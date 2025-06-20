@@ -21,10 +21,12 @@ public class Main {
     }
 
     private static void initRoutes(HttpServer server) {
-        server.createContext("/", handler -> handleRequest(handler));
-        server.createContext("/apps/", handler -> handleRequestApps(handler));
-        server.createContext("/apps/profile", handler -> handleRequestProfile(handler));
+        server.createContext("/", Main::handleStaticFile);
+        server.createContext("/styles.css", Main::handleStaticFile);
+        server.createContext("/apps/", Main::handleRequestApps);
+        server.createContext("/apps/profile", Main::handleRequestProfile);
     }
+
 
     private static void handleRequest(HttpExchange exchange) {
         try{
@@ -83,6 +85,16 @@ public class Main {
             e.printStackTrace();
         }
     }
+
+
+
+
+    private static String getMimeType(String path) {
+        if (path.endsWith(".html")) return "text/html; charset=utf-8";
+        if (path.endsWith(".css")) return "text/css; charset=utf-8";
+        return "application/octet-stream";
+    }
+
 
     private static void writeHeaders(Writer writer, String type, Headers headers){
         write(writer, type, "");
