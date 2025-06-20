@@ -86,7 +86,34 @@ public class Main {
         }
     }
 
+    private static void handleStaticFile(HttpExchange exchange) {
+        try {
+            URI uri = exchange.getRequestURI();
+            String path = uri.getPath();
 
+            File file = new File("public", path.substring(1));
+
+            if (!file.exists() || file.isDirectory()) {
+                String notFound = "404: файл не найден";
+                exchange.sendResponseHeaders(404, notFound.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(notFound.getBytes());
+                os.close();
+                return;
+            }
+
+            String mimeType = getMimeType(path);
+            exchange.getResponseHeaders().add("Content-Type", mimeType);
+
+            byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
+            exchange.sendResponseHeaders(200, fileBytes.length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(fileBytes);
+            os.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
     private static String getMimeType(String path) {
